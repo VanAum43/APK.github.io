@@ -1,203 +1,124 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-<meta charset="UTF-8">
-<title>APK Security Admin Panel</title>
+<title>APK Security Admin</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <style>
-body {
-    margin: 0;
-    font-family: "Segoe UI", sans-serif;
-    background: #0f172a;
-    color: #e5e7eb;
+body{margin:0;font-family:Segoe UI;background:#0f172a;color:#e5e7eb}
+.sidebar{
+ width:220px;height:100vh;position:fixed;
+ background:#020617;padding:20px
 }
-
-.sidebar {
-    width: 230px;
-    height: 100vh;
-    background: #020617;
-    position: fixed;
-    padding: 20px;
+.sidebar h2{color:#22d3ee;text-align:center}
+.sidebar a{
+ display:block;color:#cbd5f5;text-decoration:none;
+ padding:10px;border-radius:6px;margin:6px 0
 }
-
-.sidebar h2 {
-    color: #22d3ee;
-    text-align: center;
-    margin-bottom: 30px;
-}
-
-.sidebar a {
-    display: block;
-    color: #cbd5f5;
-    text-decoration: none;
-    padding: 12px;
-    margin: 8px 0;
-    border-radius: 6px;
-}
-
-.sidebar a:hover {
-    background: #1e293b;
-}
-
-.main {
-    margin-left: 260px;
-    padding: 25px;
-}
-
-.cards {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-    gap: 20px;
-}
-
-.card {
-    background: #020617;
-    padding: 20px;
-    border-radius: 12px;
-    box-shadow: 0 0 15px rgba(0,255,255,0.05);
-}
-
-.card h3 {
-    color: #22d3ee;
-    margin-bottom: 10px;
-}
-
-.logs {
-    margin-top: 30px;
-}
-
-table {
-    width: 100%;
-    border-collapse: collapse;
-    background: #020617;
-    border-radius: 10px;
-    overflow: hidden;
-}
-
-th, td {
-    padding: 12px;
-    text-align: left;
-    border-bottom: 1px solid #1e293b;
-}
-
-th {
-    background: #020617;
-    color: #38bdf8;
-}
-
-.status-blocked {
-    color: #ef4444;
-    font-weight: bold;
-}
-
-.status-safe {
-    color: #22c55e;
-    font-weight: bold;
-}
-
-.footer {
-    text-align: center;
-    margin-top: 40px;
-    color: #64748b;
-    font-size: 14px;
+.sidebar a:hover{background:#1e293b}
+.main{margin-left:240px;padding:25px}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:20px}
+.card{background:#020617;padding:20px;border-radius:12px}
+h3{color:#22d3ee}
+table{width:100%;border-collapse:collapse;margin-top:20px}
+th,td{padding:10px;border-bottom:1px solid #1e293b}
+th{color:#38bdf8}
+.blocked{color:#ef4444}
+.safe{color:#22c55e}
+.logout{
+ margin-top:20px;
+ background:#ef4444;
+ padding:10px;
+ border-radius:6px;
+ text-align:center;
+ cursor:pointer
 }
 </style>
 </head>
 
 <body>
 
+<script>
+if(localStorage.getItem("apk_auth")!=="true"){
+    window.location="login.html";
+}
+</script>
+
 <div class="sidebar">
-    <h2>APK Admin</h2>
-    <a href="#">Dashboard</a>
-    <a href="#">Attack Logs</a>
-    <a href="#">Blocked IPs</a>
-    <a href="#">Security Rules</a>
-    <a href="#">Settings</a>
+<h2>APK Admin</h2>
+<a>Dashboard</a>
+<a>Attack Logs</a>
+<a>Blocked IPs</a>
+<a>Rules</a>
+<div class="logout" onclick="logout()">Logout</div>
 </div>
 
 <div class="main">
-    <h1>Security Dashboard</h1>
-    <p>Website Protection Status: <span class="status-safe">ACTIVE</span></p>
+<h1>Security Dashboard</h1>
+<p>Status: <span class="safe">ACTIVE</span></p>
 
-    <div class="cards">
-        <div class="card">
-            <h3>Total Requests</h3>
-            <p id="requests">0</p>
-        </div>
-        <div class="card">
-            <h3>Blocked Attacks</h3>
-            <p id="blocked">0</p>
-        </div>
-        <div class="card">
-            <h3>XSS Attempts</h3>
-            <p id="xss">0</p>
-        </div>
-        <div class="card">
-            <h3>SQL Injection</h3>
-            <p id="sql">0</p>
-        </div>
-    </div>
+<div class="cards">
+<div class="card"><h3>Total Requests</h3><p id="req">0</p></div>
+<div class="card"><h3>Blocked Attacks</h3><p id="blk">0</p></div>
+<div class="card"><h3>XSS</h3><p id="xss">0</p></div>
+<div class="card"><h3>SQLi</h3><p id="sql">0</p></div>
+</div>
 
-    <div class="logs">
-        <h2>Live Attack Logs</h2>
-        <table>
-            <thead>
-                <tr>
-                    <th>Time</th>
-                    <th>IP Address</th>
-                    <th>Attack Type</th>
-                    <th>Status</th>
-                </tr>
-            </thead>
-            <tbody id="logTable"></tbody>
-        </table>
-    </div>
+<canvas id="chart" height="90"></canvas>
 
-    <div class="footer">
-        APK Security Module © 2025 | GitHub Pages Deployment
-    </div>
+<table>
+<thead>
+<tr><th>Time</th><th>IP</th><th>Type</th><th>Status</th></tr>
+</thead>
+<tbody id="logs"></tbody>
+</table>
 </div>
 
 <script>
-let requests = 0, blocked = 0, xss = 0, sql = 0;
+let r=0,b=0,x=0,s=0;
+const ctx=document.getElementById("chart");
+const chart=new Chart(ctx,{
+ type:"bar",
+ data:{
+  labels:["XSS","SQLi","Normal"],
+  datasets:[{data:[0,0,0]}]
+ }
+});
 
-function randomIP() {
-    return `${Math.floor(Math.random()*255)}.${Math.floor(Math.random()*255)}.${Math.floor(Math.random()*255)}.${Math.floor(Math.random()*255)}`;
+function ip(){
+ return Math.floor(Math.random()*255)+"."+Math.floor(Math.random()*255)+"."+Math.floor(Math.random()*255)+"."+Math.floor(Math.random()*255);
 }
 
-function addLog() {
-    requests++;
-    const attacks = ["XSS", "SQL Injection", "Normal"];
-    const attack = attacks[Math.floor(Math.random()*attacks.length)];
-    const isBlocked = attack !== "Normal";
+function add(){
+ r++;
+ const types=["XSS","SQLi","Normal"];
+ const t=types[Math.floor(Math.random()*3)];
+ const blocked=t!=="Normal";
 
-    if (isBlocked) blocked++;
-    if (attack === "XSS") xss++;
-    if (attack === "SQL Injection") sql++;
+ if(blocked)b++;
+ if(t==="XSS")x++;
+ if(t==="SQLi")s++;
 
-    document.getElementById("requests").innerText = requests;
-    document.getElementById("blocked").innerText = blocked;
-    document.getElementById("xss").innerText = xss;
-    document.getElementById("sql").innerText = sql;
+ req.innerText=r; blk.innerText=b; xss.innerText=x; sql.innerText=s;
 
-    const row = document.createElement("tr");
-    row.innerHTML = `
-        <td>${new Date().toLocaleTimeString()}</td>
-        <td>${randomIP()}</td>
-        <td>${attack}</td>
-        <td class="${isBlocked ? "status-blocked" : "status-safe"}">
-            ${isBlocked ? "Blocked" : "Allowed"}
-        </td>
-    `;
-    document.getElementById("logTable").prepend(row);
+ chart.data.datasets[0].data=[x,s,r-b];
+ chart.update();
 
-    if (document.getElementById("logTable").rows.length > 8) {
-        document.getElementById("logTable").deleteRow(8);
-    }
+ const tr=document.createElement("tr");
+ tr.innerHTML=`<td>${new Date().toLocaleTimeString()}</td>
+ <td>${ip()}</td>
+ <td>${t}</td>
+ <td class="${blocked?"blocked":"safe"}">${blocked?"Blocked":"Allowed"}</td>`;
+ logs.prepend(tr);
+ if(logs.rows.length>7)logs.deleteRow(7);
 }
 
-setInterval(addLog, 2500);
+setInterval(add,2500);
+
+function logout(){
+ localStorage.removeItem("apk_auth");
+ window.location="login.html";
+}
 </script>
 
 </body>
